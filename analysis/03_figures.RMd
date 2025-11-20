@@ -1,0 +1,140 @@
+---
+title: "hypertension"
+author: "Eli"
+date: "2024-04-17"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r import}
+library( here )
+library( tidyverse )
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	fig.path = paste0( here( 'results', 'figures' ), '/' ),
+	fig.width = 10,
+	fig.height = 10,
+	fig.keep = 'all' )
+```
+
+```{r source}
+source( file = here( 'analysis', 'shared.R' ) )
+```
+
+```{r input}
+input <- read_tsv( file = here( 'results', 'performance_landscape.tsv' ) ) %>%
+  mutate( f1score = 2 * ( ( precision * recall ) / ( precision + recall ) ) ) %>%
+  mutate( cutoffs = case_when(
+    precision > 0.999 & recall > 0.999 ~ "Good",
+    TRUE ~ "Bad"
+  ))
+```
+
+```{r precision}
+ggplot( data = input,
+        mapping = aes( x = w1,
+                       y = w2,
+                       fill = precision ) ) +
+  theme_bw() +
+  gg_bigger_texts +
+  scale_fill_continuous( name = "Precision",
+                         type = 'viridis',
+                         limits = c( 0.0, 1.0 )  ) +
+  #scale_fill_viridis_c( begin = 0, end = 1, direction = 1 ) +
+  geom_tile() #+
+  #labs( fill = 'scale' )
+```
+
+```{r recall}
+ggplot( data = input,
+        mapping = aes( x = w1,
+                       y = w2,
+                       fill = recall ) ) +
+  theme_bw() +
+  gg_bigger_texts +
+  scale_fill_continuous( name = "Recall",
+                         type = 'viridis',
+                         limits = c( 0.0, 1.0 )  ) +
+  #scale_fill_viridis_c( begin = 0, end = 1, direction = 1 ) +
+  geom_tile() #+
+  #labs( fill = 'scale' )
+```
+
+```{r f1score}
+ggplot( data = input,
+        mapping = aes( x = w1,
+                       y = w2,
+                       fill = f1score ) ) +
+  theme_bw() +
+  gg_bigger_texts +
+  scale_fill_continuous( name = "F1 score",
+                         type = 'viridis',
+                         limits = c( 0.0, 1.0 )  ) +
+  geom_tile()
+```
+
+```{r cutoffs}
+# ggplot( data = input,
+#         mapping = aes( x = w1,
+#                        y = w2,
+#                        fill = cutoffs ) ) +
+#   theme_bw() +
+#   gg_bigger_texts +
+#   scale_fill_continuous( name = "Cutoffs",
+#                          type = 'viridis',
+#                          limits = c( 0.0, 1.0 )  ) +
+#   geom_tile()
+```
+
+```{r redo_bp_chart}
+sim_bps <- read_tsv( file = here( 'results', 'simulated_bp_and_class.tsv' ),
+                   col_types = cols( .default = col_double(),
+                                     Status = col_character( ) ) )
+
+systolic_ht_cutoff <- 130.0
+diastolic_ht_cutoff <- 80.0
+
+min_systolic <- 89.0
+max_systolic <- 165.0
+min_diastolic <- 50.0
+max_diastolic <- 120.0
+
+axis_limits_x <- c( min_systolic, max_systolic )
+axis_limits_y <- c( min_diastolic, max_diastolic )
+
+ggplot( data = sim_bps, 
+        mapping = aes( x = SBP, y = DBP, color = Status ) ) + 
+  theme_bw() +
+  gg_bigger_texts +
+  scale_color_manual( values = c( '#998ec3', '#f1a340' ) ) +
+  geom_point( size = 1.5 ) +
+  xlab( "Systolic (mmHg)" ) +
+  ylab( "Diastolic (mmHg)" ) +
+  theme( legend.position = 'none' ) +
+  geom_segment( x = systolic_ht_cutoff, 
+                xend = systolic_ht_cutoff,
+                y = -Inf,
+                yend = diastolic_ht_cutoff, 
+                linetype = 2, 
+                color = "black" ) +
+  geom_segment( x = -Inf, 
+                xend = systolic_ht_cutoff,
+                y = diastolic_ht_cutoff,  
+                yend = diastolic_ht_cutoff, 
+                linetype = 2, 
+                color = "black" ) +
+  coord_cartesian( xlim = axis_limits_x, ylim = axis_limits_y )
+```
+```
+
+# Session info
+```{r versions}
+Sys.time()
+getwd()
+sessionInfo()
+```

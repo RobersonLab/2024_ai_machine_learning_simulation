@@ -1,0 +1,175 @@
+---
+title: "hypertension"
+author: "Eli"
+date: "2024-04-17"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r import}
+library( here )
+library( tidyverse )
+```
+
+```{r outputdir}
+dir.create( path = here( 'results',
+                         'figures'), 
+            showWarnings = FALSE, 
+            recursive = TRUE )
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	fig.path = paste0( here( 'results', 'figures' ), '/' ),
+	fig.keep = 'all' )
+```
+
+```{r constants}
+training_file <- 'femtodos.txt'
+
+systolic_ht_cutoff <- 130.0
+diastolic_ht_cutoff <- 80.0
+
+min_systolic <- 89.0
+max_systolic <- 165.0
+min_diastolic <- 50.0
+max_diastolic <- 120.0
+
+axis_limits_x <- c( min_systolic, max_systolic )
+axis_limits_y <- c( min_diastolic, max_diastolic )
+
+number_simulations <- 5000
+```
+
+```{r read}
+# Trained using FigShare data from -
+# URL: https://figshare.com/articles/dataset/Women_s_dataset_from_the_Predicting_increased_blood_pressure_using_Machine_Learning_paper/845664
+# Link: https://figshare.com/ndownloader/files/1274410
+# Downloaded file: femtodos.txt
+# I'm not doing a download.file option here because I tried
+# and for whatever reason the format was **always** 
+# wrong in some way. 
+
+input <- read_delim( file = here( 'data',
+                                  training_file ), 
+                     skip_empty_rows = TRUE,
+                     col_names = TRUE, 
+                     delim = ';', 
+                     locale = locale( decimal_mark = ',' ),
+                     col_types = cols( .default = col_integer(),
+                                       id = col_character(),
+                                       Is.Obese = col_character(),
+                                       bmi = col_double(),
+                                       SBP = col_double(),
+                                       DBP = col_double(),
+                                       preh = col_character() ) ) %>%
+  filter( SBP > 80.0 )
+
+# ^
+# the filter is to remove one anomalously low value
+# in the data that seems likely to be an error
+
+# HT = hypertensive
+# NP normotensive
+input <- input %>%
+  mutate( Status = case_when(
+    SBP >= systolic_ht_cutoff ~ "HT",
+    DBP >= diastolic_ht_cutoff ~ "HT",
+    TRUE ~ "NT"
+  )) %>%
+  mutate( Status = factor( Status, levels = c( 'NT', 'HT' ) ) )
+```
+
+```{r real_data_plot}
+ggplot( data = input, 
+        mapping = aes( x = SBP, y = DBP, color = Status ) ) + 
+  theme_bw() +
+  scale_color_manual( values = c( '#998ec3', '#f1a340' ) ) +
+  geom_point( size = 1.5 ) +
+  xlab( "Systolic (mmHg)" ) +
+  ylab( "Diastolic (mmHg)" ) +
+  theme( legend.position = 'top' ) +
+  geom_segment( x = systolic_ht_cutoff, 
+                xend = systolic_ht_cutoff,
+                y = -Inf,
+                yend = diastolic_ht_cutoff, 
+                linetype = 2, 
+                color = "black" ) +
+  geom_segment( x = -Inf, 
+                xend = systolic_ht_cutoff,
+                y = diastolic_ht_cutoff,  
+                yend = diastolic_ht_cutoff, 
+                linetype = 2, 
+                color = "black" ) +
+  coord_cartesian( xlim = axis_limits_x, ylim = axis_limits_y )
+```
+
+```{r fit_and_simulate}
+model <- lm( formula = DBP ~ SBP, data = input )
+
+predictors <- data.frame( SBP = rnorm( n = number_simulations, 
+                                       mean = 125.0, 
+                                       sd = 15.0 ) ) %>%
+  filter( SBP >= min_systolic ) %>%
+  filter( SBP <= max_systolic )
+
+modeled <- predict( object = model, 
+                    newdata = predictors, 
+                    interval = 'conf' ) %>%
+  as_tibble( . ) %>%
+  mutate( sd = ( ( fit - lwr ) * 2.0 ) * rnorm( n=1, mean = 2.5, sd = 0.65 ) ) %>%
+  mutate( errored = 0.0 )
+
+for( idx in 1:nrow( modeled ) ) {
+  modeled$errored[idx] = rnorm( n = 1, 
+                                mean = modeled$fit[idx], 
+                                sd = modeled$sd[idx] )
+}
+
+simulated <- tibble( SBP = predictors$SBP,
+                     DBP = modeled$errored ) %>%
+  filter( SBP >= min_systolic ) %>%
+  filter( SBP <= max_systolic ) %>%
+  filter( DBP >= min_diastolic ) %>%
+  filter( DBP <= max_diastolic ) %>%
+  mutate( Status = case_when(
+    SBP >= systolic_ht_cutoff ~ "HT",
+    DBP >= diastolic_ht_cutoff ~ "HT",
+    TRUE ~ "NT"
+  )) %>%
+  write_tsv( file = here( 'results', 'simulated_bp_and_class.tsv' ) )
+```
+
+```{r plot_simulated_data}
+ggplot( data = simulated, 
+        mapping = aes( x = SBP, y = DBP, color = Status ) ) + 
+  theme_bw() +
+  scale_color_manual( values = c( '#998ec3', '#f1a340' ) ) +
+  geom_point( size = 1.5 ) +
+  xlab( "Systolic (mmHg)" ) +
+  ylab( "Diastolic (mmHg)" ) +
+  theme( legend.position = 'top' ) +
+  geom_segment( x = systolic_ht_cutoff, 
+                xend = systolic_ht_cutoff,
+                y = -Inf,
+                yend = diastolic_ht_cutoff, 
+                linetype = 2, 
+                color = "black" ) +
+  geom_segment( x = -Inf, 
+                xend = systolic_ht_cutoff,
+                y = diastolic_ht_cutoff,  
+                yend = diastolic_ht_cutoff, 
+                linetype = 2, 
+                color = "black" ) +
+  coord_cartesian( xlim = axis_limits_x, ylim = axis_limits_y )
+```
+
+# Session info
+```{r versions}
+Sys.time()
+getwd()
+sessionInfo()
+```
