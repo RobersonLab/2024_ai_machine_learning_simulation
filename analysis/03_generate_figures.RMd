@@ -1,5 +1,5 @@
 ---
-title: "hypertension"
+title: "generate figures for paper"
 author: "Eli"
 date: "2024-04-17"
 output: html_document
@@ -27,7 +27,7 @@ source( file = here( 'analysis', 'shared.R' ) )
 ```
 
 ```{r input}
-input <- read_tsv( file = here( 'results', 'performance_landscape.tsv' ) ) %>%
+input <- read_tsv( file = here( 'results', 'performance_landscape.tsv.gz' ) ) %>%
   mutate( f1score = 2 * ( ( precision * recall ) / ( precision + recall ) ) ) %>%
   mutate( cutoffs = case_when(
     precision > 0.999 & recall > 0.999 ~ "Good",
@@ -92,7 +92,7 @@ ggplot( data = input,
 ```
 
 ```{r redo_bp_chart}
-sim_bps <- read_tsv( file = here( 'results', 'simulated_bp_and_class.tsv' ),
+sim_bps <- read_tsv( file = here( 'results', 'simulated_bp_and_class.tsv.gz' ),
                    col_types = cols( .default = col_double(),
                                      Status = col_character( ) ) )
 
@@ -129,7 +129,6 @@ ggplot( data = sim_bps,
                 linetype = 2, 
                 color = "black" ) +
   coord_cartesian( xlim = axis_limits_x, ylim = axis_limits_y )
-```
 ```
 
 # Session info

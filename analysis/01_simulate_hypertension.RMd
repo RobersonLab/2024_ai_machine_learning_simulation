@@ -1,5 +1,5 @@
 ---
-title: "hypertension"
+title: "simulate hypertension data based on real data"
 author: "Eli"
 date: "2024-04-17"
 output: html_document
@@ -140,7 +140,7 @@ simulated <- tibble( SBP = predictors$SBP,
     DBP >= diastolic_ht_cutoff ~ "HT",
     TRUE ~ "NT"
   )) %>%
-  write_tsv( file = here( 'results', 'simulated_bp_and_class.tsv' ) )
+  write_tsv( file = here( 'results', 'simulated_bp_and_class.tsv.gz' ) )
 ```
 
 ```{r plot_simulated_data}
