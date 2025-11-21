@@ -12,3 +12,5 @@ Blood pressure data
 2. Download the data from the TSV download link. It should be a file named "femtodos.txt". Look, I would prefer to download it in the scripting. But regardless of method (libcurl, internal, curl, wget), the output was always wrong. Humor me and just download the file yourself.
 3. Install all required packages ().
 4. Run analysis scripts in order. That's it.
+
+**Note that step 2 has a long run time, so is provided as a script that can be run in the background instead of an interactive R Markdown session.**
